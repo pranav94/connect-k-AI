@@ -20,7 +20,6 @@ class MyBoard(Board):
     def __init__(self, col, row, k, g):
         """Board class used to track the moves."""
         Board.__init__(self, col, row, k, g)
-        self.next_moves = {}
 
     def check_empty_vertical_spots(self, i, j, k):
         """Check if the spot above the consecutive tokens is empty."""
