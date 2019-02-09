@@ -17,43 +17,23 @@ def heuristic(k):
 class MyBoard(Board):
     """Custom board class to maintain the moves."""
 
-    def __init__(self, col, row, k, g, player, board=None, depth=0):
-        """Copy an existing state of the board to generate a new Board object or create a new board.
-
-        Args:
-            player (int): The player whose turn it is to play. Either SELF or opponent.
-            board (MyBoard): The state of the board to copy.
-            depth (int): The depth of this board state from the actual board state. 
-                            i.e Number of moves required on the current board state to arrived at this state
-
-        """
+    def __init__(self, col, row, k, g):
+        """Board class used to track the moves."""
         Board.__init__(self, col, row, k, g)
-
-        # If a state has been passed, use this board state to initialize
-        if board:
-            self.board = deepcopy(board.board)
-
-        self.depth = depth
-        self.player = player
         self.next_moves = {}
-
-        # If already won by SELF, then assign a score for this state. Else assign 0.
-        self.score = heuristic(k) if self.is_win() == SELF else 0
-
-        # If this state isn't a winning state, calculate scores of all possible next states.
-        if self.is_win() == 0:
-            self.score = self.calculate_scores()
 
     def check_empty_vertical_spots(self, i, j, k):
         """Check if the spot above the consecutive tokens is empty."""
         return (
-            j > 0 and self.board[i-k][j-1] == 0
+            j > 0 and i-k > 0 and self.board[i-k][j-1] == 0
         )
 
     def check_empty_horizontal_spots(self, i, j, k):
         """Checks if the spot before and after consecutive tokens is empty and has ground below for next token."""
-        left_empty_and_has_ground = (j-k >= 0 and self.board[i][j-k] == 0) and (i == self.row-1 or self.board[i+1][j-k] != 0)
-        right_empty_and_has_ground = (j+1 < self.col and self.board[i][j+1] == 0) and (i == self.row-1 or self.board[i+1][j+1] != 0)
+        left_empty_and_has_ground = (
+            j-k >= 0 and self.board[i][j-k] == 0) and (i == self.row-1 or self.board[i+1][j-k] != 0)
+        right_empty_and_has_ground = (
+            j+1 < self.col and self.board[i][j+1] == 0) and (i == self.row-1 or self.board[i+1][j+1] != 0)
 
         return left_empty_and_has_ground or right_empty_and_has_ground
 
@@ -117,23 +97,44 @@ class MyBoard(Board):
             self.anti_diagonal_score(player)
         )
 
-    def get_next_state(self, move, player):
-        """Make a move and recursively calculate the next moves until depth 4."""
-        next_move = self.make_move(move, player)
-        return MyBoard(self.col, self.row, self.k, self.g, player, next_move, self.depth+1)
-
-    def calculate_scores(self):
-        if self.depth == 4:
-            return self.heuristic_score(SELF) - self.heuristic_score(OPPONENT)
-        next_player = SELF if self.player == OPPONENT else OPPONENT
-        score = 0
+    def minimax(self):
+        best_move = 0
+        best_score = float('-inf')
         for c in range(self.col):
             if self.check_space(c, 0) and not self.is_win():
-                next_board_state = self.get_next_state(Move(c, 0), next_player)
-                self.next_moves[c] = next_board_state
-                score += next_board_state.score
+                next_board_state = self.make_move(Move(c, 0), SELF)
+                score = self.min_play(next_board_state, 0)
+                if score > best_score:
+                    best_move = c
+                    best_score = score
 
-        return score
+        return Move(best_move, 0)
+
+    def min_play(self, state, depth):
+        if depth >= 4:
+            return state.heuristic_score(SELF) - state.heuristic_score(OPPONENT)
+
+        best_score = float('inf')
+        for c in range(state.col):
+            if state.check_space(c, 0) and not state.is_win():
+                next_board_state = state.make_move(Move(c, 0), OPPONENT)
+                score = state.max_play(next_board_state, depth+1)
+                best_score = min(best_score, score)
+
+        return best_score
+
+    def max_play(self, state, depth):
+        if depth >= 4:
+            return state.heuristic_score(SELF) - state.heuristic_score(OPPONENT)
+
+        best_score = float('-inf')
+        for c in range(state.col):
+            if state.check_space(c, 0) and not state.is_win():
+                next_board_state = state.make_move(Move(c, 0), SELF)
+                score = state.min_play(next_board_state, depth+1)
+                best_score = max(score, best_score)
+
+        return best_score
 
     def check_space(self, c, r):
         return True if self.board[r][c] == 0 else False
@@ -150,25 +151,14 @@ class StudentAI():
         self.col = col
         self.row = row
         self.k = k
-        self.myboard = MyBoard(col, row, k, g, SELF)
-
-    def get_best_move(self):
-        max_score = -float('inf')
-        best_move = Move(0, 0)
-        for c in self.myboard.next_moves:
-            if self.myboard.next_moves[c].score > max_score:
-                max_score = self.myboard.next_moves[c].score
-                best_move = Move(c, 0)
-
-        return best_move
+        self.myboard = MyBoard(col, row, k, g)
 
     def get_move(self, move):
         self.myboard = self.myboard.make_move(move, OPPONENT)
-        self.myboard.calculate_scores()
 
         if self.g == 0:
             return Move(randint(0, self.col-1), randint(0, self.row-1))
         else:
-            next_move = self.get_best_move()
-            self.myboard = self.myboard.make_move(next_move, SELF)
-            return next_move
+            best_move = self.myboard.minimax()()
+            self.myboard = self.myboard.make_move(best_move, SELF)
+            return best_move
