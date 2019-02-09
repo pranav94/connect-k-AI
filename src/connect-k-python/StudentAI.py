@@ -44,8 +44,8 @@ class MyBoard(Board):
         """
         score = 0
         for i in range(self.row):
+            current_count = 0
             for j in range(self.col):
-                current_count = 0
                 if self.board[i][j] == player:
                     current_count += 1
                 else:
@@ -110,7 +110,7 @@ class MyBoard(Board):
         return Move(best_move, 0)
 
     def min_play(self, state, depth):
-        if depth >= 4:
+        if depth >= 5:
             return state.heuristic_score(SELF) - state.heuristic_score(OPPONENT)
 
         best_score = float('inf')
@@ -123,7 +123,7 @@ class MyBoard(Board):
         return best_score
 
     def max_play(self, state, depth):
-        if depth >= 4:
+        if depth >= 5:
             return state.heuristic_score(SELF) - state.heuristic_score(OPPONENT)
 
         best_score = float('-inf')
@@ -158,6 +158,6 @@ class StudentAI():
         if self.g == 0:
             return Move(randint(0, self.col-1), randint(0, self.row-1))
         else:
-            best_move = self.myboard.minimax()()
+            best_move = self.myboard.minimax()
             self.myboard = self.myboard.make_move(best_move, SELF)
             return best_move
