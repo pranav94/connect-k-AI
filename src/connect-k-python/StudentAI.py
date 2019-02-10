@@ -79,16 +79,59 @@ class MyBoard(Board):
 
         return score
 
+    def get_diag_len(self, i, j, player):
+        count = 0
+        while (i < self.row and j < self.col):
+            if self.board[i][j] == player:
+                count += 1
+            else:
+                break
+            i += 1
+            j += 1
+
+        return count
+
     def diagonal_score(self, player):
-        # TODO: Write this
-        return 0
+        score = 0
+        for i in range(self.row):
+            for j in range(self.col):
+                if j-1 >= 0 and self.board[i][j-1] == 0:
+                    continue
+                if j-1 >= 0 and i-1 >= 0 and self.board[i-1][j-1] != 0 and i == 0:
+                    continue
+                count = self.get_diag_len(i, j, player)
+
+                score += heuristic(count)
+
+        return count
+
+    def get_anti_diag_len(self, i, j, player):
+        count = 0
+        while (i < self.row and j >= 0):
+            if self.board[i][j] == player:
+                count += 1
+            else:
+                break
+            i += 1
+            j -= 1
+
+        return count
 
     def anti_diagonal_score(self, player):
-        # TODO: Write this
-        return 0
+        score = 0
+        for i in range(self.row):
+            for j in range(self.col):
+                if j+1 < self.col and self.board[i][j+1] == 0 and j == self.col-1:
+                    continue
+                if j+1 < self.col and i-1 >= 0 and self.board[i-1][j+1] != 0 and i == 0:
+                    continue
+                count = self.get_diag_len(i, j, player)
+                score += heuristic(count)
+
+        return count
 
     def heuristic_score(self, player):
-        """Generates a score for the current state."""
+        """Generates a score for the given player in the current state."""
         return (
             self.vertical_score(player) +
             self.horizontal_score(player) +
@@ -96,47 +139,47 @@ class MyBoard(Board):
             self.anti_diagonal_score(player)
         )
 
-    def minimax(self):
-        best_move = 0
-        best_score = float('-inf')
-        for c in range(self.col):
-            if self.check_space(c, 0) and not self.is_win():
-                next_board_state = self.make_move(Move(c, 0), SELF)
-                score = self.min_play(next_board_state, 0)
-                if score > best_score:
-                    best_move = c
-                    best_score = score
-
-        return Move(best_move, 0)
-
-    def min_play(self, state, depth):
-        if depth >= 5:
-            return state.heuristic_score(SELF) - state.heuristic_score(OPPONENT)
-
-        best_score = float('inf')
-        for c in range(state.col):
-            if state.check_space(c, 0) and not state.is_win():
-                next_board_state = state.make_move(Move(c, 0), OPPONENT)
-                score = state.max_play(next_board_state, depth+1)
-                best_score = min(best_score, score)
-
-        return best_score
-
-    def max_play(self, state, depth):
-        if depth >= 5:
-            return state.heuristic_score(SELF) - state.heuristic_score(OPPONENT)
-
-        best_score = float('-inf')
-        for c in range(state.col):
-            if state.check_space(c, 0) and not state.is_win():
-                next_board_state = state.make_move(Move(c, 0), SELF)
-                score = state.min_play(next_board_state, depth+1)
-                best_score = max(score, best_score)
-
-        return best_score
-
     def check_space(self, c, r):
         return True if self.board[r][c] == 0 else False
+
+    def minimax(self, state, depth=0, player=SELF, alpha=float('-inf'), beta=float('inf')):
+        """
+        Calculates the next possible states and calculates the optimal value
+        using minimax with alpha beta pruning. If the state is a win state or
+        at depth = number of rows, returns a heuristic score instead.
+        """
+        if state.is_win():
+            if player == OPPONENT:
+                return (float('inf'), Move(0, 0))
+            return (float('-inf'), Move(0, 0))
+        if depth == self.col:
+            if player == OPPONENT:
+                return (state.heuristic_score(OPPONENT) - state.heuristic_score(SELF), Move(0, 0))
+            return (state.heuristic_score(SELF) - state.heuristic_score(OPPONENT), Move(0, 0))
+
+        best_move = 0
+        next_player = SELF if player == OPPONENT else OPPONENT
+        best_val = float('-inf') if player == SELF else float('inf')
+        for c in range(state.col):
+            if not state.check_space(c, 0):
+                continue
+            value, _move = self.minimax(
+                state.make_move(Move(c, 0), next_player),
+                depth + 1, next_player, alpha, beta
+            )
+            if player == SELF:
+                if value > best_val:
+                    best_val = value
+                    best_move = c
+                alpha = max(alpha, best_move)
+            else:
+                if value < best_val:
+                    best_val = value
+                    best_move = c
+                beta = min(beta, best_val)
+            if beta <= alpha:
+                break
+        return best_val, Move(best_move, 0)
 
 
 class StudentAI():
@@ -158,6 +201,6 @@ class StudentAI():
         if self.g == 0:
             return Move(randint(0, self.col-1), randint(0, self.row-1))
         else:
-            best_move = self.myboard.minimax()
+            (_best_val, best_move) = self.myboard.minimax(self.myboard)
             self.myboard = self.myboard.make_move(best_move, SELF)
             return best_move
