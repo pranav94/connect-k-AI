@@ -23,18 +23,26 @@ class MyBoard(Board):
 
     def check_empty_vertical_spots(self, i, j, k):
         """Check if the spot above the consecutive tokens is empty."""
-        return (
-            j > 0 and i-k > 0 and self.board[i-k][j-1] == 0
+        top = (
+            i-k > 0 and self.board[i-k][j] == 0
         )
+        bottom = (
+            i+1 < self.row and self.board[i+1][j] == 0
+        )
+        return top or bottom
 
     def check_empty_horizontal_spots(self, i, j, k):
         """Checks if the spot before and after consecutive tokens is empty and has ground below for next token."""
-        left_empty_and_has_ground = (
-            j-k >= 0 and self.board[i][j-k] == 0) and (i == self.row-1 or self.board[i+1][j-k] != 0)
-        right_empty_and_has_ground = (
-            j+1 < self.col and self.board[i][j+1] == 0) and (i == self.row-1 or self.board[i+1][j+1] != 0)
+        if self.g:
+            left_empty_and_has_ground = (
+                j-k >= 0 and self.board[i][j-k] == 0) and (i == self.row-1 or self.board[i+1][j-k] != 0)
+            right_empty_and_has_ground = (
+                j+1 < self.col and self.board[i][j+1] == 0) and (i == self.row-1 or self.board[i+1][j+1] != 0)
 
-        return left_empty_and_has_ground or right_empty_and_has_ground
+            return left_empty_and_has_ground or right_empty_and_has_ground
+
+        else:
+            return (j-k >= 0 and self.board[i][j-k] == 0) or (j+1 < self.col and self.board[i][j+1] == 0)
 
     def horizontal_score(self, player):
         """
@@ -74,7 +82,7 @@ class MyBoard(Board):
                 current_count = max(current_count, self.k)
 
                 # Check if there is an empty spot before or after this series of counts
-                if current_count > 0 and self.check_empty_vertical_spots(i, j, current_count):
+                if current_count > 0 and self.check_empty_vertical_spots(j, i, current_count):
                     score += heuristic(current_count)
 
         return score
@@ -95,7 +103,7 @@ class MyBoard(Board):
         score = 0
         for i in range(self.row):
             for j in range(self.col):
-                if j-1 >= 0 and self.board[i][j-1] == 0:
+                if not self.g and j-1 >= 0 and self.board[i][j-1] == 0:
                     continue
                 if j-1 >= 0 and i-1 >= 0 and self.board[i-1][j-1] != 0 and i == 0:
                     continue
@@ -105,7 +113,7 @@ class MyBoard(Board):
 
         return count
 
-    def get_anti_diag_len(self, i, j, player):
+    def get_anti_diag_len(self, i, j, player, g=True):
         count = 0
         while (i < self.row and j >= 0):
             if self.board[i][j] == player:
@@ -117,11 +125,11 @@ class MyBoard(Board):
 
         return count
 
-    def anti_diagonal_score(self, player):
+    def anti_diagonal_score(self, player, g=True):
         score = 0
         for i in range(self.row):
             for j in range(self.col):
-                if j+1 < self.col and self.board[i][j+1] == 0 and j == self.col-1:
+                if not self.g and j+1 < self.col and self.board[i][j+1] == 0 and j == self.col-1:
                     continue
                 if j+1 < self.col and i-1 >= 0 and self.board[i-1][j+1] != 0 and i == 0:
                     continue
@@ -142,6 +150,20 @@ class MyBoard(Board):
     def check_space(self, c, r):
         return True if self.board[r][c] == 0 else False
 
+    def get_moves(self):
+        moves = []
+        if not self.g:
+            for i in range(self.col):
+                for j in range(self.row):
+                    if self.check_space(i, j):
+                        moves.append((i, j))
+        else:
+            for i in range(self.col):
+                if self.check_space(i, 0):
+                    moves.append((i, 0))
+
+        return moves
+
     def minimax(self, state, depth=0, player=SELF, alpha=float('-inf'), beta=float('inf')):
         """
         Calculates the next possible states and calculates the optimal value
@@ -150,36 +172,36 @@ class MyBoard(Board):
         """
         if state.is_win():
             if player == OPPONENT:
-                return (float('inf'), Move(0, 0))
-            return (float('-inf'), Move(0, 0))
-        if depth == self.col:
+                return ((100**(self.row-depth)), Move(0, 0))
+            return (-(100**(self.row-depth)), Move(0, 0))
+
+        if depth == (self.row if self.g else 4):
             if player == OPPONENT:
                 return (state.heuristic_score(OPPONENT) - state.heuristic_score(SELF), Move(0, 0))
             return (state.heuristic_score(SELF) - state.heuristic_score(OPPONENT), Move(0, 0))
 
-        best_move = 0
+        best_move = Move(0, 0)
         next_player = SELF if player == OPPONENT else OPPONENT
         best_val = float('-inf') if player == SELF else float('inf')
-        for c in range(state.col):
-            if not state.check_space(c, 0):
-                continue
+        for c, r in state.get_moves():
             value, _move = self.minimax(
-                state.make_move(Move(c, 0), next_player),
+                state.make_move(Move(c, r), next_player),
                 depth + 1, next_player, alpha, beta
             )
             if player == SELF:
                 if value > best_val:
                     best_val = value
-                    best_move = c
-                alpha = max(alpha, best_move)
+                    best_move = Move(c, r)
+                alpha = max(alpha, best_val)
             else:
                 if value < best_val:
                     best_val = value
-                    best_move = c
+                    best_move = Move(c, r)
                 beta = min(beta, best_val)
             if beta <= alpha:
                 break
-        return best_val, Move(best_move, 0)
+
+        return best_val, best_move
 
 
 class StudentAI():
@@ -197,10 +219,6 @@ class StudentAI():
 
     def get_move(self, move):
         self.myboard = self.myboard.make_move(move, OPPONENT)
-
-        if self.g == 0:
-            return Move(randint(0, self.col-1), randint(0, self.row-1))
-        else:
-            (_best_val, best_move) = self.myboard.minimax(self.myboard)
-            self.myboard = self.myboard.make_move(best_move, SELF)
-            return best_move
+        (_best_val, best_move) = self.myboard.minimax(self.myboard)
+        self.myboard = self.myboard.make_move(best_move, SELF)
+        return best_move
