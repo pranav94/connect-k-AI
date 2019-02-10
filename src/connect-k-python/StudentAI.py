@@ -218,7 +218,8 @@ class StudentAI():
         self.myboard = MyBoard(col, row, k, g)
 
     def get_move(self, move):
-        self.myboard = self.myboard.make_move(move, OPPONENT)
+        if move.col != -1:
+            self.myboard = self.myboard.make_move(move, OPPONENT)
         (_best_val, best_move) = self.myboard.minimax(self.myboard)
         self.myboard = self.myboard.make_move(best_move, SELF)
         return best_move
