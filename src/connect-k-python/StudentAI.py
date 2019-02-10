@@ -170,24 +170,24 @@ class MyBoard(Board):
         using minimax with alpha beta pruning. If the state is a win state or
         at depth = number of rows, returns a heuristic score instead.
         """
-        if state.is_win():
-            if player == OPPONENT:
-                return (float("inf"), Move(0, 0))
+        if state.is_win() == SELF:
+            return (float("inf"), Move(0, 0))
+        if state.is_win() == OPPONENT:
             return (float("-inf"), Move(0, 0))
 
-        if depth == (self.row if self.g else 4):
-            if player == OPPONENT:
-                return (state.heuristic_score(OPPONENT) - state.heuristic_score(SELF), Move(0, 0))
+        if depth == 4:
             return (state.heuristic_score(SELF) - state.heuristic_score(OPPONENT), Move(0, 0))
 
         best_move = Move(0, 0)
         next_player = SELF if player == OPPONENT else OPPONENT
         best_val = float('-inf') if player == SELF else float('inf')
+
         for c, r in state.get_moves():
             value, _move = self.minimax(
-                state.make_move(Move(c, r), next_player),
+                state.make_move(Move(c, r), player),
                 depth + 1, next_player, alpha, beta
             )
+
             if player == SELF:
                 if value > best_val:
                     best_val = value
@@ -220,6 +220,5 @@ class StudentAI():
     def get_move(self, move):
         self.myboard = self.myboard.make_move(move, OPPONENT)
         (_best_val, best_move) = self.myboard.minimax(self.myboard)
-        print(_best_val)
         self.myboard = self.myboard.make_move(best_move, SELF)
         return best_move
