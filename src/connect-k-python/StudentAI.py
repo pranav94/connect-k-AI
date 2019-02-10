@@ -172,8 +172,8 @@ class MyBoard(Board):
         """
         if state.is_win():
             if player == OPPONENT:
-                return ((100**(self.row-depth)), Move(0, 0))
-            return (-(100**(self.row-depth)), Move(0, 0))
+                return (float("inf"), Move(0, 0))
+            return (float("-inf"), Move(0, 0))
 
         if depth == (self.row if self.g else 4):
             if player == OPPONENT:
@@ -220,5 +220,6 @@ class StudentAI():
     def get_move(self, move):
         self.myboard = self.myboard.make_move(move, OPPONENT)
         (_best_val, best_move) = self.myboard.minimax(self.myboard)
+        print(_best_val)
         self.myboard = self.myboard.make_move(best_move, SELF)
         return best_move
