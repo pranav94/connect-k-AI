@@ -170,19 +170,22 @@ class MyBoard(Board):
         using minimax with alpha beta pruning. If the state is a win state or
         at depth = number of rows, returns a heuristic score instead.
         """
-        if state.is_win() == SELF:
-            return (float("inf"), Move(0, 0))
-        if state.is_win() == OPPONENT:
-            return (float("-inf"), Move(0, 0))
+        is_win = state.is_win()
+        if is_win == SELF or is_win == -1:
+            return (float('inf'), Move(0, 0))
+        if is_win == OPPONENT:
+            return (float('-inf'), Move(0, 0))
 
-        if depth == 4:
+        if depth == (self.k if self.g else 4):
             return (state.heuristic_score(SELF) - state.heuristic_score(OPPONENT), Move(0, 0))
 
-        best_move = Move(0, 0)
+        best_move = None
         next_player = SELF if player == OPPONENT else OPPONENT
         best_val = float('-inf') if player == SELF else float('inf')
 
         for c, r in state.get_moves():
+            if best_move is None:
+                best_move = Move(c, r)
             value, _move = self.minimax(
                 state.make_move(Move(c, r), player),
                 depth + 1, next_player, alpha, beta
