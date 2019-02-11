@@ -177,7 +177,17 @@ class MyBoard(Board):
         if is_win == OPPONENT:
             return (float('-inf'), Move(0, 0))
 
-        if depth == (self.row if self.g else 5):
+        depth_reached = False
+        if not self.g:
+            if self.col >= 7 and depth == 4:
+                depth_reached = True
+            if depth == 5:
+                depth_reached = True
+        else:
+            if depth == self.row:
+                depth_reached = True
+
+        if depth_reached:
             return (state.heuristic_score(SELF) - state.heuristic_score(OPPONENT), Move(0, 0))
 
         best_move = None
@@ -237,4 +247,3 @@ class StudentAI():
             self.myboard.available.remove((best_move.row, best_move.col))
         self.myboard = self.myboard.make_move(best_move, SELF)
         return best_move
-
