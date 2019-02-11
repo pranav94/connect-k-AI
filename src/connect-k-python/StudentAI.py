@@ -5,7 +5,6 @@ from BoardClasses import Board, Move
 OPPONENT = 2
 SELF = 1
 
-
 def heuristic(k):
     """
     Assigns a heuristic score for a given number of sequential tokens.
@@ -20,6 +19,11 @@ class MyBoard(Board):
     def __init__(self, col, row, k, g):
         """Board class used to track the moves."""
         Board.__init__(self, col, row, k, g)
+        self.available = set()
+        if not g:
+            for i in range(row):
+                for j in range(col):
+                    self.available.add((i, j))
 
     def check_empty_vertical_spots(self, i, j, k):
         """Check if the spot above the consecutive tokens is empty."""
@@ -153,14 +157,11 @@ class MyBoard(Board):
     def get_moves(self):
         moves = []
         if not self.g:
-            for i in range(self.col):
-                for j in range(self.row):
-                    if self.check_space(i, j):
-                        moves.append((i, j))
+            return self.available
         else:
             for i in range(self.col):
-                if self.check_space(i, 0):
-                    moves.append((i, 0))
+                if (self.check_space(i, 0)):
+                    moves.append((0, i))
 
         return moves
 
@@ -176,20 +177,25 @@ class MyBoard(Board):
         if is_win == OPPONENT:
             return (float('-inf'), Move(0, 0))
 
-        if depth == (self.k if self.g else 4):
+        if depth == (self.row if self.g else 5):
             return (state.heuristic_score(SELF) - state.heuristic_score(OPPONENT), Move(0, 0))
 
         best_move = None
         next_player = SELF if player == OPPONENT else OPPONENT
         best_val = float('-inf') if player == SELF else float('inf')
 
-        for c, r in state.get_moves():
+        for r, c in state.get_moves():
+            move = Move(c, r)
+            if not self.g:
+                state.available.remove((r, c))
             if best_move is None:
-                best_move = Move(c, r)
+                best_move = move
             value, _move = self.minimax(
-                state.make_move(Move(c, r), player),
+                state.make_move(move, player),
                 depth + 1, next_player, alpha, beta
             )
+            if not self.g:
+                state.available.add((r, c))
 
             if player == SELF:
                 if value > best_val:
@@ -222,7 +228,13 @@ class StudentAI():
 
     def get_move(self, move):
         if move.col != -1:
+            if not self.g:
+                self.myboard.available.remove((move.row, move.col))
             self.myboard = self.myboard.make_move(move, OPPONENT)
+
         (_best_val, best_move) = self.myboard.minimax(self.myboard)
+        if not self.g:
+            self.myboard.available.remove((best_move.row, best_move.col))
         self.myboard = self.myboard.make_move(best_move, SELF)
         return best_move
+
