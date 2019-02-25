@@ -4,6 +4,7 @@ from BoardClasses import Board, Move
 
 OPPONENT = 2
 SELF = 1
+INF = 2**32
 
 def heuristic(k):
     """
@@ -165,7 +166,7 @@ class MyBoard(Board):
 
         return moves
 
-    def minimax(self, state, depth=0, player=SELF, alpha=float('-inf'), beta=float('inf')):
+    def minimax(self, state, depth=0, player=SELF, alpha=-INF, beta=INF):
         """
         Calculates the next possible states and calculates the optimal value
         using minimax with alpha beta pruning. If the state is a win state or
@@ -173,26 +174,18 @@ class MyBoard(Board):
         """
         is_win = state.is_win()
         if is_win == SELF or is_win == -1:
-            return (float('inf'), Move(0, 0))
+            return (INF, Move(0, 0))
         if is_win == OPPONENT:
-            return (float('-inf'), Move(0, 0))
+            return (-INF, Move(0, 0))
 
-        depth_reached = False
-        if not self.g:
-            if self.col >= 7 and depth == 4:
-                depth_reached = True
-            if depth == 5:
-                depth_reached = True
-        else:
-            if depth == self.row:
-                depth_reached = True
-
-        if depth_reached:
+        end_for_gravity_mode = self.g and (depth == self.row)
+        end_for_non_gravity_mode = not self.g and ((self.col >= 7 and depth == 4) or depth == 5)
+        if end_for_gravity_mode or end_for_non_gravity_mode:
             return (state.heuristic_score(SELF) - state.heuristic_score(OPPONENT), Move(0, 0))
 
         best_move = None
         next_player = SELF if player == OPPONENT else OPPONENT
-        best_val = float('-inf') if player == SELF else float('inf')
+        best_val = -INF if player == SELF else INF
 
         for r, c in state.get_moves():
             move = Move(c, r)
