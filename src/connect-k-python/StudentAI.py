@@ -1,8 +1,6 @@
-import time
-
-from copy import deepcopy
-from random import randint
+from time import time
 from threading import Thread
+
 from BoardClasses import Board, Move
 
 OPPONENT = 2
@@ -240,11 +238,11 @@ class StudentAI():
         self.myboard = MyBoard(col, row, k, g)
 
     def iterative_deepening_search(self):
-        started = time.time()
+        started = TIME_LIMIT + time()
         best_move_dict = {}
 
-        for i in range(4, len(self.myboard.available)):
-            time_remaining = TIME_LIMIT - (time.time() - started)
+        for i in range(4, self.row*self.col):
+            time_remaining =  started - time()
             if time_remaining:
                 minimax = Thread(
                     target=self.myboard.minimax,
