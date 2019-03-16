@@ -1,12 +1,11 @@
 from time import time
-from threading import Thread
+from multiprocessing import Process, Manager
 
 from BoardClasses import Board, Move
 
 OPPONENT = 2
 SELF = 1
 INF = 2**32
-TIME_LIMIT = 970
 
 
 def heuristic(k):
@@ -238,13 +237,26 @@ class StudentAI():
         self.myboard = MyBoard(col, row, k, g)
 
     def iterative_deepening_search(self):
-        started = TIME_LIMIT + time()
-        best_move_dict = {}
+        time_limit = self.row * 4
+        started = time_limit + time()
+        manager = Manager()
+        best_move_dict = manager.dict()
 
-        for i in range(4, self.row*self.col):
-            time_remaining =  started - time()
+        min_depth = 6
+        max_depth = 8
+        if not self.g:
+            min_depth = 4 if self.col >= 7 else 5
+            max_depth = 6 if self.col >= 7 else 7
+
+        # Search at minimum depth first
+        self.myboard.minimax(self.myboard, min_depth, best_move_dict)
+
+        # # Deepen search if time is available.
+        # # Use processes to return immedeiately after timeout.
+        for i in range(min_depth+1, max_depth):
+            time_remaining = started - time()
             if time_remaining:
-                minimax = Thread(
+                minimax = Process(
                     target=self.myboard.minimax,
                     args=(self.myboard, i, best_move_dict)
                 )
