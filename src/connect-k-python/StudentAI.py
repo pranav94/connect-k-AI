@@ -1,5 +1,4 @@
 import time
-import sys
 
 from copy import deepcopy
 from random import randint
