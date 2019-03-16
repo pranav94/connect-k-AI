@@ -1,10 +1,16 @@
+import time
+import sys
+
 from copy import deepcopy
 from random import randint
+from threading import Thread
 from BoardClasses import Board, Move
 
 OPPONENT = 2
 SELF = 1
 INF = 2**32
+TIME_LIMIT = 970
+
 
 def heuristic(k):
     """
@@ -93,6 +99,7 @@ class MyBoard(Board):
         return score
 
     def get_diag_len(self, i, j, player):
+        """Returns the length of the diagonal at i,j."""
         count = 0
         while (i < self.row and j < self.col):
             if self.board[i][j] == player:
@@ -119,6 +126,7 @@ class MyBoard(Board):
         return count
 
     def get_anti_diag_len(self, i, j, player, g=True):
+        """Returns the length of the anti-diagonal at i,j."""
         count = 0
         while (i < self.row and j >= 0):
             if self.board[i][j] == player:
@@ -156,6 +164,7 @@ class MyBoard(Board):
         return True if self.board[r][c] == 0 else False
 
     def get_moves(self):
+        """Returns an list of tuples as all possible moves."""
         moves = []
         if not self.g:
             return self.available
@@ -166,7 +175,7 @@ class MyBoard(Board):
 
         return moves
 
-    def minimax(self, state, depth=0, player=SELF, alpha=-INF, beta=INF):
+    def minimax(self, state, maxdepth, best_move_dict={}, depth=0, player=SELF, alpha=-INF, beta=INF):
         """
         Calculates the next possible states and calculates the optimal value
         using minimax with alpha beta pruning. If the state is a win state or
@@ -174,14 +183,12 @@ class MyBoard(Board):
         """
         is_win = state.is_win()
         if is_win == SELF or is_win == -1:
-            return (INF, Move(0, 0))
+            return INF
         if is_win == OPPONENT:
-            return (-INF, Move(0, 0))
+            return -INF
 
-        end_for_gravity_mode = self.g and (depth == self.row)
-        end_for_non_gravity_mode = not self.g and ((self.col >= 7 and depth == 4) or depth == 5)
-        if end_for_gravity_mode or end_for_non_gravity_mode:
-            return (state.heuristic_score(SELF) - state.heuristic_score(OPPONENT), Move(0, 0))
+        if depth == maxdepth:
+            return state.heuristic_score(SELF) - state.heuristic_score(OPPONENT)
 
         best_move = None
         next_player = SELF if player == OPPONENT else OPPONENT
@@ -193,9 +200,11 @@ class MyBoard(Board):
                 state.available.remove((r, c))
             if best_move is None:
                 best_move = move
-            value, _move = self.minimax(
-                state.make_move(move, player),
-                depth + 1, next_player, alpha, beta
+            value = self.minimax(
+                state=state.make_move(move, player),
+                maxdepth=maxdepth,
+                best_move_dict=best_move_dict,
+                depth=depth + 1, player=next_player, alpha=alpha, beta=beta
             )
             if not self.g:
                 state.available.add((r, c))
@@ -213,7 +222,9 @@ class MyBoard(Board):
             if beta <= alpha:
                 break
 
-        return best_val, best_move
+        if depth == 0:
+            best_move_dict['result'] = best_move
+        return best_val
 
 
 class StudentAI():
@@ -229,13 +240,28 @@ class StudentAI():
         self.k = k
         self.myboard = MyBoard(col, row, k, g)
 
+    def iterative_deepening_search(self):
+        started = time.time()
+        best_move_dict = {}
+
+        for i in range(4, len(self.myboard.available)):
+            time_remaining = TIME_LIMIT - (time.time() - started)
+            if time_remaining:
+                minimax = Thread(
+                    target=self.myboard.minimax,
+                    args=(self.myboard, i, best_move_dict)
+                )
+                minimax.start()
+                minimax.join(time_remaining)
+        return best_move_dict['result']
+
     def get_move(self, move):
         if move.col != -1:
             if not self.g:
                 self.myboard.available.remove((move.row, move.col))
             self.myboard = self.myboard.make_move(move, OPPONENT)
 
-        (_best_val, best_move) = self.myboard.minimax(self.myboard)
+        best_move = self.iterative_deepening_search()
         if not self.g:
             self.myboard.available.remove((best_move.row, best_move.col))
         self.myboard = self.myboard.make_move(best_move, SELF)
